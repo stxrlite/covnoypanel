@@ -9,7 +9,7 @@ services:
         - APP_URL=$APP_URL
     restart: unless-stopped
     volumes:
-      - .:/var/www/
+      - panel_code:/var/www/
       - caddy_config:/config
       - caddy_data:/data
     depends_on:
@@ -25,7 +25,7 @@ services:
         - PHP_XDEBUG_MODE=$PHP_XDEBUG_MODE
     restart: unless-stopped
     volumes:
-      - .:/var/www/
+      - panel_code:/var/www/
     expose:
       - 9000
     depends_on:
@@ -36,6 +36,8 @@ services:
     env_file: .env
     extra_hosts:
       host.docker.internal: host-gateway
+    # 👇 THE MAGIC AUTO-SETUP SCRIPT 👇
+    command: sh -c "if [ ! -f artisan ]; then curl -Lo panel.tar.gz https://github.com/convoypanel/panel/releases/latest/download/panel.tar.gz && tar -xzvf panel.tar.gz --overwrite && chmod -R o+w storage/* bootstrap/cache/; fi && if [ ! -f composer.phar ]; then curl -sS https://getcomposer.org/installer | php; fi && php composer.phar install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan optimize && php-fpm"
 
   workspace:
     build:
@@ -45,7 +47,7 @@ services:
         - PHP_XDEBUG_MODE=$PHP_XDEBUG_MODE
     tty: true
     volumes:
-      - .:/var/www/
+      - panel_code:/var/www/
     extra_hosts:
       host.docker.internal: host-gateway
 
@@ -56,12 +58,13 @@ services:
         - APP_ENV=$APP_ENV
     restart: unless-stopped
     volumes:
-      - .:/var/www/
+      - panel_code:/var/www/
     depends_on:
       database:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file: .env
 
   redis:
     image: redis:7.0-alpine
@@ -94,6 +97,7 @@ services:
       retries: 20
 
 volumes:
+  panel_code:
   caddy_config:
   caddy_data:
   db_data:
